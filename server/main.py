@@ -67,7 +67,8 @@ async def get_artifact(request: Request) -> Response:
     return FileResponse(str(file_path), filename=file_path.name)
 
 
-if __name__ == "__main__":  # pragma: no cover
+def main():
+    """Entry point for the MCP server."""
     port = int(os.getenv("PORT", "9000"))
     # Start the server with stdio transport by default
     transport = os.getenv("TRANSPORT", "stdio")
@@ -75,3 +76,7 @@ if __name__ == "__main__":  # pragma: no cover
         mcp.run(transport="streamable-http", host="0.0.0.0", port=port)
     else:
         mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()

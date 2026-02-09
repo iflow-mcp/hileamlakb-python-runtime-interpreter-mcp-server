@@ -38,3 +38,25 @@ name: hileamlakb-python-runtime-interpreter-mcp-server
    5. mount_file - 挂载远程文件
 
 启动命令: python server/main.py (stdio模式)
+
+[2026-02-09] [✅] 步骤4: 创建并推送iflow分支 - 成功
+分支: iflow
+远程仓库: https://github.com/iflow-mcp/hileamlakb-python-runtime-interpreter-mcp-server
+状态: 已成功推送到远程仓库
+
+[2026-02-09] [✅] 步骤5: 上传到官方仓库 - 部分成功
+发布到PyPI成功！
+包名: iflow-mcp_hileamlakb-prims
+版本: 0.1.0
+上传文件:
+- iflow_mcp_hileamlakb_prims-0.1.0-py3-none-any.whl (17.4KiB)
+- iflow_mcp_hileamlakb_prims-0.1.0.tar.gz (13.4KiB)
+
+注意: 后续尝试发布0.1.1和0.1.2版本时遇到认证问题，但0.1.0版本已成功发布到PyPI
+
+[2026-02-09] [❌] 步骤6: 生成ServerConfig并测试 - 失败
+问题: entry point配置错误
+详情: prims = "server.main:main" 应该改为 "server.main"
+原因: pyproject.toml中的project.scripts配置格式不正确
+解决方案: 已修改为 "server.main" 但新版本发布失败
+当前状态: 使用已发布的0.1.0版本无法正常工作，需要重新发布修正后的版本
