@@ -22,7 +22,7 @@ class ArtifactMeta(TypedDict):
 
 
 # Typed return for run_code results.
-class RunCodeResult(TypedDict, total=False):
+class RunCodeResult(TypedDict):
     """Result of running code in the sandbox.
     Optionally includes a feedback field with suggestions or warnings (list of strings).
     """
@@ -48,59 +48,66 @@ async def run_code(
         work = TMP_DIR / f"session_{session_id}"
         work.mkdir(parents=True, exist_ok=True)
     else:
-        # Legacy per-run workspace (stateless behaviour).
+        # One-shot execution, clean up workspace after run.
         work = TMP_DIR / f"run_{run_id}"
-        if work.exists():
-            shutil.rmtree(work)
         work.mkdir(parents=True, exist_ok=True)
 
-    # Ensure mounts directory exists for all modes.
-    (work / "mounts").mkdir(parents=True, exist_ok=True)
-    # Directory where user code should place output/artifacts.
-    (work / "output").mkdir(parents=True, exist_ok=True)
+    # Prepare directories
+    mounts_dir = work / "mounts"
+    output_dir = work / "output"
+    mounts_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    await download_files(files, work / "mounts")
+    # Download files if provided
+    if files:
+        await download_files(files, mounts_dir)
 
-    py = await create_virtualenv(requirements, work)
+    # Create virtual environment
+    venv_path = work / "venv"
+    create_virtualenv(venv_path)
 
-    script_name = f"script_{run_id}.py" if session_id else "script.py"
-    script = work / script_name
-    script.write_text(textwrap.dedent(code))
+    # Install requirements
+    if requirements:
+        # Install packages in the virtual environment
+        import subprocess
+        pip_exe = venv_path / "bin" / "pip"
+        for req in requirements:
+            subprocess.run([str(pip_exe), "install", req], check=True, capture_output=True)
 
-    proc = await asyncio.create_subprocess_exec(
-        str(py),
-        str(script),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        cwd=work,
+    # Execute code
+    import subprocess
+    python_exe = venv_path / "bin" / "python"
+    script_path = work / "script.py"
+    with open(script_path, "w") as f:
+        f.write(code)
+
+    result = subprocess.run(
+        [str(python_exe), str(script_path)],
+        cwd=str(work),
+        capture_output=True,
+        text=True,
+        timeout=TIMEOUT_SECONDS
     )
 
-    try:
-        out, err = await asyncio.wait_for(proc.communicate(), timeout=TIMEOUT_SECONDS)
-    except TimeoutError as err:
-        proc.kill()
-        await proc.wait()
-        msg = f"Execution timed out after {TIMEOUT_SECONDS}s"
-        raise RuntimeError(msg) from err
+    # Collect artifacts
+    artifacts = []
+    for item in output_dir.iterdir():
+        if item.is_file():
+            mime, _ = mimetypes.guess_type(str(item))
+            artifacts.append({
+                "name": item.name,
+                "relative_path": str(item.relative_to(output_dir)),
+                "size": item.stat().st_size,
+                "mime": mime or "application/octet-stream"
+            })
 
-    # Collect artifacts inside the output directory.
-    artifacts: list[ArtifactMeta] = []
-    output_dir = work / "output"
-    for p in output_dir.rglob("*"):
-        if p.is_file():
-            try:
-                rel_path = p.relative_to(output_dir)
-            except ValueError:
-                continue  # skip files not in output_dir
-            size = p.stat().st_size
-            mime, _ = mimetypes.guess_type(str(p))
-            artifacts.append(
-                {
-                    "name": rel_path.name,
-                    "relative_path": rel_path.as_posix(),
-                    "size": size,
-                    "mime": mime or "application/octet-stream",
-                }
-            )
+    # Clean up one-shot workspace
+    if not session_id:
+        shutil.rmtree(work, ignore_errors=True)
 
-    return {"stdout": out.decode(), "stderr": err.decode(), "artifacts": artifacts}
+    return {
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+        "artifacts": artifacts,
+        "feedback": ""
+    }

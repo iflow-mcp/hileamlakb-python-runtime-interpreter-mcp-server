@@ -1,5 +1,6 @@
 """MCP tool: execute Python code in a sandbox."""
 
+from typing import Any, Dict, List
 from fastmcp import Context, FastMCP
 
 from server.sandbox.runner import RunCodeResult
@@ -53,10 +54,10 @@ def register(mcp: FastMCP) -> None:
     )
     async def _run_code(
         code: str,
-        requirements: list[str] | None = None,
-        files: list[dict[str, str]] | None = None,
+        requirements: List[str] | None = None,
+        files: List[Dict[str, str]] | None = None,
         ctx: Context | None = None,
-    ) -> RunCodeResult:
+    ) -> Dict[str, Any]:
         """Tool implementation compatible with FastMCP.
 
         If a session_id is provided, the environment and files persist for the

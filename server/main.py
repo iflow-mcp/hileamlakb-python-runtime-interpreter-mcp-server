@@ -69,5 +69,9 @@ async def get_artifact(request: Request) -> Response:
 
 if __name__ == "__main__":  # pragma: no cover
     port = int(os.getenv("PORT", "9000"))
-    # Start the server with HTTP transport (modern replacement for SSE)
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=port)
+    # Start the server with stdio transport by default
+    transport = os.getenv("TRANSPORT", "stdio")
+    if transport == "http":
+        mcp.run(transport="streamable-http", host="0.0.0.0", port=port)
+    else:
+        mcp.run(transport="stdio")

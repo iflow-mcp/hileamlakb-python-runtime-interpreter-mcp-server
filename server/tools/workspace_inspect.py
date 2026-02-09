@@ -4,7 +4,7 @@ import mimetypes
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, Any, Dict
 
 import aiofiles
 from fastmcp import Context, FastMCP
@@ -71,11 +71,11 @@ def register(mcp: FastMCP) -> None:
     )
     async def _list_dir(
         dir_path: str | None = None, ctx: Context | None = None
-    ) -> list[DirEntry]:
+    ) -> list[Dict[str, Any]]:
         target = _resolve_in_session(ctx, dir_path or ".")
         if not target.is_dir():
             raise ValueError("Specified path is not a directory")
-        entries: list[DirEntry] = []
+        entries: list[Dict[str, Any]] = []
         for p in sorted(target.iterdir(), key=lambda p: p.name):
             stat = p.stat()
             entries.append(
@@ -98,7 +98,7 @@ def register(mcp: FastMCP) -> None:
     )
     async def _preview_file(
         relative_path: str, ctx: Context | None = None
-    ) -> FilePreview:
+    ) -> Dict[str, Any]:
         file_path = _resolve_in_session(ctx, relative_path)
         if not file_path.is_file():
             raise FileNotFoundError("File not found")
